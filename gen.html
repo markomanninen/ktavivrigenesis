@@ -1,0 +1,255 @@
+<style>
+
+@font-face {
+  font-family: 'FreeMono';
+  src: url('FreeMono.woff');
+}
+
+@font-face {
+  font-family: 'FreeMonoBold';
+  src: url('FreeMonoBold.woff');
+}
+
+@font-face {
+  font-family: 'Nehama';
+  src: url('http://www.fontsaddict.com/fontface/nehama.ttf');
+}
+
+@font-face {
+  font-family: 'MonoHebrew';
+  src: url('Everson Mono.ttf');
+} 
+
+table.gentable {
+    font-family: FreeMonoBold, FreeMono, MonoHebrew, Nehama;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+td span[title] {
+    cursor: pointer;
+    border: 1px solid transparent;
+    padding: 2px 0 1px 2px;
+}
+
+td span[title]:hover, td span.hover {
+    border-color: #999;
+    border-right-color: #ccc;
+    border-bottom-color: #ccc;
+    background-color: #eee;
+}
+    
+.rendered_html td, .rendered_html th {
+    border: 1px solid #DADADA;
+}
+
+td span.clicked {
+  border-color: green;
+  border-width: 2px;
+}
+
+td span.hit {
+  border-color: blue;
+  border-width: 2px;
+}
+
+td div.totals {
+    float: right;
+    font-size: 80%
+}
+
+</style>
+
+<script>
+
+
+    function JSON2CSV(objArray) {
+      var array = typeof objArray != 'object' ? JSON.parse(objArray) : objArray;
+
+      var str = '';
+      var line = '';
+
+      if ($("#labels").is(':checked')) {
+          var head = array[0];
+          if ($("#quote").is(':checked')) {
+              for (var index in array[0]) {
+                  var value = index + "";
+                  line += '"' + value.replace(/"/g, '""') + '",';
+              }
+          } else {
+              for (var index in array[0]) {
+                  line += index + ',';
+              }
+          }
+
+          line = line.slice(0, -1);
+          str += line + '\r\n';
+      }
+
+      for (var i = 0; i < array.length; i++) {
+          var line = '';
+
+          if ($("#quote").is(':checked')) {
+              for (var index in array[i]) {
+                  var value = array[i][index] + "";
+                  line += '"' + value.replace(/"/g, '""') + '",';
+              }
+          } else {
+              for (var index in array[i]) {
+                  line += array[i][index] + ',';
+              }
+          }
+
+          line = line.slice(0, -1);
+          str += line + '\r\n';
+      }
+      return str;
+      
+  }
+
+
+function calculateInstances() {
+
+  var $these = $('td span[order]').sort(function(a, b) {
+    return $(a).attr('order') - $(b).attr('order');
+  });
+
+  var hits = {};
+  var input_value = 1; 
+  var max = 1000; //5559333
+
+  while (input_value < max) {
+
+    var sum = 0;
+    var sums = [];
+
+    $these.each(function() {
+      if (input_value) {
+        var value = parseInt($(this).attr('value'));
+        sum += value;
+        sums.push(this);
+        if (sum == input_value) {
+          if (input_value in hits) {
+            hits[input_value] += 1
+          } else {
+            hits[input_value] = 1
+          }
+          sum = 0;
+          sums = [];
+        } else if (sum > input_value) {
+          while (sum > input_value) {
+            sum -= parseInt($(sums.shift()).attr('value'));
+            if (sum == input_value) {
+              if (input_value in hits) {
+                hits[input_value] += 1
+              } else {
+                hits[input_value] = 1
+              }
+              sum = 0;
+              sums = [];
+              break;
+            }
+          }
+        }
+      }
+    });
+    input_value += 1;
+  }
+
+
+  //var csv = JSON2CSV(hits);
+  window.open("data:text/csv;charset=utf-8," + escape(hits))
+  console.log(hits);
+
+}
+
+$( document ).ready(function() {
+
+  calculateInstances();
+
+  var $hits = $('span#hits');
+  
+  $('input#search').on('input', function() {
+    
+    $hits.text(0);
+    
+    var input_value = parseInt($(this).val() || 0);
+                
+    //if (input_value > 0) {
+    
+    var $these = $('td span[order]').sort(function(a, b) {
+        return $(a).attr('order') - $(b).attr('order');
+    });
+    
+    var sum = 0;
+    var sums = [];
+    
+    $these.each(function() {
+      $(this).removeClass('hit');
+      if (input_value) {
+          var value = parseInt($(this).attr('value'));
+          sum += value;
+          sums.push(this);
+          if (sum == input_value) {
+            sums.forEach(function(item) {
+              $(item).addClass('hit');
+            });
+            $hits.text(parseInt($hits.text())+1);
+            sum = 0;
+            sums = [];
+          } else if (sum > input_value) {
+            while (sum > input_value) {
+              sum -= parseInt($(sums.shift()).attr('value'));
+              if (sum == input_value) {
+                sums.forEach(function(item) {
+                  $(item).addClass('hit');
+                });
+                $hits.text(parseInt($hits.text())+1);
+                sum = 0;
+                sums = [];
+                break;
+              }
+            }
+          }
+      }
+    });
+    //}
+  });
+  
+  var hovon = function () {
+      var $that = $(this);
+      var $these = $('td span[index="'+$that.attr('index')+'"]');
+      $these.addClass('hover');
+      var text = $.map($these, function(element) {return $(element).attr('roman')}).join("+");
+      var value = $.map($these, function(element) {return $(element).attr('value')}).join("+");
+      var sum = 0;
+      $these.each(function() {
+        sum += parseInt($(this).attr('value'));
+      });
+      text = value == sum ? text+'='+value : text+'='+value+'='+sum;
+      $these.attr('title', text);
+  };
+  
+  var hovoff = function () {
+      var $that = $(this);
+      var $these = $('td span[index="'+$that.attr('index')+'"]');
+      $these.removeClass('hover');
+  };
+  
+  var $selected = $('span#selected');
+   
+  $('td span[index]').click(function () {
+      var $that = $(this);
+      var val = parseInt($that.attr('value'));
+      var selected = parseInt($selected.text());
+      selected = $that.hasClass('clicked') ? selected - val : selected + val;
+      $selected.text(selected);
+      $that.toggleClass('clicked');
+  });
+  
+  $('td span[index]').hover(hovon, hovoff);
+  
+});
+
+</script>
